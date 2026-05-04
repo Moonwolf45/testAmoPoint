@@ -1,0 +1,100 @@
+name: Laravel CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: laravel_test
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: secret
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, gd
+          coverage: none
+
+      - name: Copy .env file
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: laravel-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            laravel-composer-
+
+      - name: Configure environment
+        run: |
+          sed -i 's/DB_HOST=127.0.0.1/DB_HOST=127.0.0.1/' .env
+          sed -i 's/DB_PORT=3306/DB_PORT=3306/' .env
+          sed -i 's/DB_DATABASE=laravel/DB_DATABASE=laravel_test/' .env
+          sed -i 's/DB_USERNAME=forge/DB_USERNAME=laravel/' .env
+          sed -i 's/DB_PASSWORD=/DB_PASSWORD=secret/' .env
+
+      - name: Wait for MySQL
+        run: sleep 10
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run database seeders (optional)
+        run: php artisan db:seed --force
+
+      - name: Run Pest tests
+        run: php artisan test
+
+      - name: Run static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Cache Laravel framework
+        uses: actions/cache@v4
+        with:
+          path: bootstrap/cache
+          key: laravel-bootstrap-${{ hashFiles('**/*.php') }}
+
+      - name: Clear application cache
+        run: php artisan optimize:clear
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: storage/logs/
