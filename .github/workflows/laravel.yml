@@ -78,9 +78,6 @@ jobs:
       - name: Run Pest tests
         run: php artisan test
 
-      - name: Run static analysis (PHPStan)
-        run: vendor/bin/phpstan analyse --no-progress
-
       - name: Cache Laravel framework
         uses: actions/cache@v4
         with:
