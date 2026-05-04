@@ -65,8 +65,8 @@ jobs:
           sed -i 's/DB_HOST=127.0.0.1/DB_HOST=127.0.0.1/' .env
           sed -i 's/DB_PORT=3306/DB_PORT=3306/' .env
           sed -i 's/DB_DATABASE=laravel_test/DB_DATABASE=laravel_test/' .env
-          sed -i 's/DB_USERNAME=laravel/DB_USERNAME=laravel/' .env
-          sed -i 's/DB_PASSWORD=secret/DB_PASSWORD=secret/' .env
+          sed -i 's/DB_USERNAME=root/DB_USERNAME=laravel/' .env
+          sed -i 's/DB_PASSWORD=/DB_PASSWORD=secret/' .env
 
       - name: Wait for MySQL
         run: sleep 10
